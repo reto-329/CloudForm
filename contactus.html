@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudForm - Contact Us</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Header Section -->
+  <header>
+    <div class="container">
+      <nav>
+        <div class="logo">
+          <h1>CloudForm</h1>
+        </div>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#how-it-works">How It Works</a></li>
+          <li><a href="index.html#testimonials">Testimonials</a></li>
+        </ul>
+        <div class="hamburger">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Form Section -->
+  <section class="form-section">
+    <div class="container">
+      <div class="form-container">
+        <div class="form-header">
+          <h2>Contact Us</h2>
+          <p>Fill out the form below and we'll get back to you as soon as possible.</p>
+        </div>
+        
+        <form id="mainForm">
+          <div class="form-group">
+            <label for="fname">First Name</label>
+            <input type="text" id="fname" name="fname" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="lname">Last Name</label>
+            <input type="text" id="lname" name="lname" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required></textarea>
+          </div>
+          
+          <div class="file-upload">
+            <label for="file-input" class="file-upload-label">
+              <i class="fas fa-cloud-upload-alt"></i> Choose File (Optional)
+            </label>
+            <input type="file" id="file-input" class="file-upload-input">
+            <div id="selected-file" class="file-info">No file selected</div>
+          </div>
+          
+          <button type="button" id="submit-button" class="submit-btn">Submit</button>
+          
+          <div id="successMessage" class="status-message success" style="display: none;">
+            Thank you! Your submission was successful. Redirecting...
+          </div>
+          
+          <div id="errorMessage" class="status-message error" style="display: none;">
+            There was an error submitting your form. Please try again.
+          </div>
+          
+          <div id="loading" class="status-message info" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Submitting your information...
+          </div>
+          
+          <div class="progress-container" id="progress-container" style="display: none;">
+            <progress id="upload-progress" value="0" max="100"></progress>
+            <div id="progress-text">Uploading: 0%</div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confirmation Dialog -->
+  <div class="confirmation-dialog" id="confirmationDialog" style="display: none;">
+    <div class="dialog-content">
+      <h3>No File Selected</h3>
+      <p>You haven't selected a file to upload. Do you want to submit the form without a file?</p>
+      <div class="dialog-buttons">
+        <button class="dialog-button dialog-confirm" id="confirmSubmit">Yes, Submit Without File</button>
+        <button class="dialog-button dialog-cancel" id="cancelSubmit">No, Let Me Choose File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">An AWS Serverless Project by RETO TECH</p>
+        <div class="social-icons">
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
+          <a href="#"><i class="fab fa-github"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    document.querySelector('.hamburger').addEventListener('click', function() {
+      document.querySelector('.nav-links').classList.toggle('active');
+      this.classList.toggle('active');
+    });
+
+    // API Configuration
+    const API_BASE_URL = 'https://jqt9f67vp4.execute-api.us-east-1.amazonaws.com/prod';
+    
+    // DOM Elements
+    const form = document.getElementById('mainForm');
+    const submitButton = document.getElementById('submit-button');
+    const fileInput = document.getElementById('file-input');
+    const selectedFileDiv = document.getElementById('selected-file');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const loadingDiv = document.getElementById('loading');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('upload-progress');
+    const progressText = document.getElementById('progress-text');
+    const confirmationDialog = document.getElementById('confirmationDialog');
+    const confirmSubmitBtn = document.getElementById('confirmSubmit');
+    const cancelSubmitBtn = document.getElementById('cancelSubmit');
+    
+    let selectedFile = null;
+    let shouldSubmit = false;
+    
+    // File Input Change Handler
+    fileInput.addEventListener('change', (event) => {
+      selectedFile = event.target.files[0];
+      if (selectedFile) {
+        selectedFileDiv.textContent = `Selected: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`;
+      } else {
+        selectedFileDiv.textContent = 'No file selected';
+      }
+    });
+    
+    // Main Submit Button Handler
+    submitButton.addEventListener('click', async () => {
+      // Validate form first
+      if (!validateForm()) {
+        return;
+      }
+      
+      // Check if file is selected
+      if (!selectedFile) {
+        // Show confirmation dialog
+        confirmationDialog.style.display = 'flex';
+        return;
+      }
+      
+      // If file is selected, proceed with submission
+      await submitAll();
+    });
+    
+    // Confirmation Dialog Handlers
+    confirmSubmitBtn.addEventListener('click', async () => {
+      confirmationDialog.style.display = 'none';
+      await submitAll();
+    });
+    
+    cancelSubmitBtn.addEventListener('click', () => {
+      confirmationDialog.style.display = 'none';
+      fileInput.click(); // Open file dialog
+    });
+    
+    // Form Validation
+    function validateForm() {
+      const requiredFields = ['fname', 'lname', 'email', 'message'];
+      let isValid = true;
+      
+      requiredFields.forEach(field => {
+        const element = document.getElementById(field);
+        if (!element.value.trim()) {
+          element.style.borderColor = '#e74c3c';
+          isValid = false;
+        } else {
+          element.style.borderColor = '#ddd';
+        }
+      });
+      
+      if (!isValid) {
+        errorMessage.textContent = 'Please fill in all required fields';
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+          errorMessage.style.display = 'none';
+        }, 3000);
+      }
+      
+      return isValid;
+    }
+    
+    // Main Submission Function
+    async function submitAll() {
+      // Reset UI
+      successMessage.style.display = 'none';
+      errorMessage.style.display = 'none';
+      loadingDiv.style.display = 'block';
+      progressContainer.style.display = 'none';
+      submitButton.disabled = true;
+      
+      try {
+        // Get form data
+        const formData = {
+          fname: document.getElementById('fname').value,
+          lname: document.getElementById('lname').value,
+          email: document.getElementById('email').value,
+          message: document.getElementById('message').value
+        };
+        
+        // Submit contact form
+        const contactResponse = await fetch(`${API_BASE_URL}/submit-form`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+        
+        const contactData = await contactResponse.json();
+        
+        if (!contactResponse.ok) {
+          throw new Error(contactData.error || 'Form submission failed');
+        }
+        
+        // If file is selected, upload it
+        if (selectedFile) {
+          progressContainer.style.display = 'block';
+          progressBar.value = 0;
+          progressText.textContent = 'Uploading: 0%';
+          
+          // Read file as base64
+          const base64Data = await readFileAsBase64(selectedFile);
+          
+          // Prepare payload
+          const payload = {
+            filename: selectedFile.name,
+            fileData: base64Data.split(',')[1], // Remove data URL prefix
+            contentType: selectedFile.type || 'application/octet-stream'
+          };
+          
+          // Upload file
+          const uploadResponse = await fetch(`${API_BASE_URL}/upload-file`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+          });
+          
+          const uploadData = await uploadResponse.json();
+          
+          if (!uploadResponse.ok) {
+            throw new Error(uploadData.error || 'File upload failed');
+          }
+        }
+        
+        // Show success message and redirect after 2 seconds
+        successMessage.style.display = 'block';
+        setTimeout(() => {
+          window.location.href = 'success.html';
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Submission error:', error);
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.style.display = 'block';
+      } finally {
+        loadingDiv.style.display = 'none';
+        progressContainer.style.display = 'none';
+        submitButton.disabled = false;
+      }
+    }
+    
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+          // Update progress (simulated for small files)
+          let progress = 0;
+          const interval = setInterval(() => {
+            progress += 10;
+            if (progress >= 90) clearInterval(interval);
+            progressBar.value = progress;
+            progressText.textContent = `Uploading: ${progress}%`;
+          }, 100);
+          
+          resolve(event.target.result);
+        };
+        
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>
